@@ -63,6 +63,10 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 
 # Copy container filesystem
 COPY rootfs/ /
+COPY modify_webapp_config.sh /
+
+ARG WEBAPP_LAT
+ARG WEBAPP_LON
 
 RUN set -x && \
     TEMP_PACKAGES=() && \
@@ -113,6 +117,7 @@ RUN set -x && \
     KEPT_PACKAGES+=(lighttpd) && \
     KEPT_PACKAGES+=(collectd-core) && \
     KEPT_PACKAGES+=(rrdtool) && \
+    TEMP_PACKAGES+=(jq) && \
     # Packages for telegraf
     TEMP_PACKAGES+=(apt-transport-https) && \
     KEPT_PACKAGES+=(socat) && \
@@ -203,6 +208,7 @@ RUN set -x && \
     find "/src/readsb-protobuf" -maxdepth 1 -executable -type f -exec cp -v {} /usr/local/bin/ \; && \
     # Install readsb - Deploy webapp.
     git clone https://github.com/Mictronics/readsb-protobuf.git "/src/readsb-protobuf-db" && \
+    /modify_webapp_config.sh $WEBAPP_LAT $WEBAPP_LON && rm /modify_webapp_config.sh && \
     mkdir -p /usr/share/readsb/html && \
     cp -Rv /src/readsb-protobuf-db/webapp/src/* /usr/share/readsb/html/ && \
     ln -s /etc/lighttpd/conf-available/01-setenv.conf /etc/lighttpd/conf-enabled/01-setenv.conf && \
@@ -271,7 +277,7 @@ RUN set -x && \
     chown readsb "/run/autogain" && \
     # Install telegraf
     curl --location --silent -o - https://repos.influxdata.com/influxdb.key | apt-key add - && \
-    source /etc/os-release && \ 
+    source /etc/os-release && \
     echo "deb https://repos.influxdata.com/debian $VERSION_CODENAME stable" > /etc/apt/sources.list.d/influxdb.list && \
     apt-get update && \
     apt-get install --no-install-recommends -y telegraf && \
